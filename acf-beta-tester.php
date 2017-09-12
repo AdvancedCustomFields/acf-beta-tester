@@ -16,19 +16,22 @@ if( !class_exists('acf_beta_tester') ):
 
 class acf_beta_tester {
 	
-	// vars
+	/** @var array An array of plugin info */
 	var $settings;
+	
+	
+	/** @var string The selected version used to update */
 	var $version = '';
 	
 	
-	/*
+	/**
 	*  __construct
 	*
 	*  This function will setup the class functionality
 	*
 	*  @type	function
-	*  @date	5/03/2014
-	*  @since	5.0.0
+	*  @date	12/9/17
+	*  @since	1.0.0
 	*
 	*  @param	n/a
 	*  @return	n/a
@@ -55,7 +58,35 @@ class acf_beta_tester {
 		// actions
 		if( is_admin() ) {
 			
-			add_filter( 'pre_set_site_transient_update_plugins', array($this, 'modify_plugins_transient'), 10, 1 );
+			add_action( 'init', array($this, 'init'), 10 );
+			
+		}
+		
+	}
+	
+	
+	/**
+	*  init
+	*
+	*  This function will run after WP is initialized
+	*
+	*  @type	function
+	*  @date	11/9/17
+	*  @since	1.0.0
+	*
+	*  @param	n/a
+	*  @return	n/a
+	*/
+	
+	function init() {
+		
+		// modify plugins transient
+		add_filter( 'pre_set_site_transient_update_plugins', array($this, 'modify_plugins_transient'), 10, 1 );
+		
+		
+		// allow custom version to be selected
+		if( current_user_can('install_plugins') ) {
+			
 			add_filter( 'plugin_row_meta', array($this, 'plugin_row_meta'), 10, 4 );
 			add_action( 'load-plugins.php', array($this, 'load'), 10 );
 			
@@ -64,21 +95,21 @@ class acf_beta_tester {
 	}
 	
 	
-	/*
+	/**
 	*  request
 	*
-	*  This function will make a request to the ACF update server
+	*  This function will make a request to an external server
 	*
 	*  @type	function
 	*  @date	8/4/17
-	*  @since	5.5.10
+	*  @since	1.0.0
 	*
-	*  @param	$query (string)
+	*  @param	$url (string)
 	*  @param	$body (array)
 	*  @return	(mixed)
 	*/
 	
-	function request( $url = '', $body = array() ) {
+	function request( $url = '', $body = null ) {
 		
 		// post
 		$raw_response = wp_remote_post($url, array(
@@ -120,17 +151,17 @@ class acf_beta_tester {
 	}
 	
 	
-	/*
+	/**
 	*  get_plugin_info
 	*
 	*  This function will get plugin info and save as transient
 	*
 	*  @type	function
 	*  @date	9/4/17
-	*  @since	5.5.10
+	*  @since	1.0.0
 	*
-	*  @param	$id (string)
-	*  @return	(mixed)
+	*  @param	n/a
+	*  @return	(array)
 	*/
 	
 	function get_plugin_info() {
@@ -187,26 +218,25 @@ class acf_beta_tester {
 	}
 	
 	
-	/*
+	/**
 	*  plugin_row_meta
 	*
-	*  Displays an update message for plugin list screens.
-	*  Shows only the version updates from the current until the newest version
+	*  This function will append extra HTML to the plugin row
 	*
 	*  @type	function
-	*  @date	14/06/2016
-	*  @since	5.3.8
+	*  @date	9/4/17
+	*  @since	1.0.0
 	*
-	*  @param	$plugin_data (array)
-	*  @param	$r (object)
-	*  @return	n/a
+	*  @param	(mixed)
+	*  @return	(mixed)
 	*/
 	
 	function plugin_row_meta( $plugin_meta, $plugin_file, $plugin_data, $status ) {
 		
-		// check
+		// check if is acf
 		if( $plugin_file == 'advanced-custom-fields/acf.php' ) {
 			
+			// append html
 			$plugin_meta[] = $this->plugin_row_html();
 			
 		}
@@ -217,17 +247,18 @@ class acf_beta_tester {
 
 	}
 	
-	/*
+	
+	/**
 	*  plugin_row_html
 	*
-	*  description
+	*  This function will return HTML used for the plugin row
 	*
 	*  @type	function
 	*  @date	11/9/17
-	*  @since	5.6.0
+	*  @since	1.0.0
 	*
-	*  @param	$post_id (int)
-	*  @return	$post_id (int)
+	*  @param	n/a
+	*  @return	n/a
 	*/
 	
 	function plugin_row_html() {
@@ -241,7 +272,7 @@ class acf_beta_tester {
 		
 		?>
 		<span id="acfbt-settings">
-			Change update to 
+			<?php _e('Change update to'); ?>
 			<select name="acfbt_version">
 				<option value=""><?php _e('Select version') ?></option>
 				<?php foreach( $info['versions'] as $version ): 
@@ -266,17 +297,17 @@ class acf_beta_tester {
 	}
 	
 	
-	/*
+	/**
 	*  load
 	*
-	*  description
+	*  This function will run when loading the wp-admin/plugins.php page
 	*
 	*  @type	function
 	*  @date	11/9/17
-	*  @since	5.6.0
+	*  @since	1.0.0
 	*
-	*  @param	$post_id (int)
-	*  @return	$post_id (int)
+	*  @param	n/a
+	*  @return	n/a
 	*/
 	
 	function load() {
@@ -319,14 +350,14 @@ class acf_beta_tester {
 	}
 	
 	
-	/*
+	/**
 	*  modify_plugins_transient
 	*
-	*  This function will connect to the ACF website and find update information
+	*  This function will modify the 'update_plugins' transient with custom data
 	*
 	*  @type	function
-	*  @date	16/01/2014
-	*  @since	5.0.0
+	*  @date	11/9/17
+	*  @since	1.0.0
 	*
 	*  @param	$transient (object)
 	*  @return	$transient
@@ -362,7 +393,7 @@ class acf_beta_tester {
 				if( version_compare($version, $old_version, '<') ) continue;
 				
 				
-				// ignore if older than $old_version
+				// ignore if older than $new_version
 				if( version_compare($version, $new_version, '<') ) continue;
 				
 				
